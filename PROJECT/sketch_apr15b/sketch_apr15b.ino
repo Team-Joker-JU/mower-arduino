@@ -7,10 +7,13 @@ MeLineFollower lineFinder(PORT_6);
 MeEncoderOnBoard rightMotor(SLOT1);
 MeEncoderOnBoard leftMotor(SLOT2);
 
+// ARVIN HAR ÄNDRAT
+
 // Global direction
 enum DIRECTION { FORWARD, BACK, LEFT, RIGHT };
 
 DIRECTION direction = BACK;
+int SPEED = 170;
 
 void isr_process_encoder1(void){
   if (digitalRead(rightMotor.getPortB()) == 0){
@@ -51,11 +54,12 @@ void setup() {
 // OM VÄNSTER ÄR NEGATIV OCH HÖGER POSITIV SÅ GÅR DEN BAKÅT
 // 1 är HÖGER
 // 2 är VÄNSTER
-void driveForward(int speed){
-  leftMotor.setMotorPwm(speed);
-  rightMotor.setMotorPwm(-speed);
+void driveForward(){
+  leftMotor.setMotorPwm(SPEED);
+  rightMotor.setMotorPwm(-SPEED);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
+  direction = FORWARD;
 }
 
 void driveBack(int speed){
@@ -63,16 +67,43 @@ void driveBack(int speed){
   rightMotor.setMotorPwm(speed);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
+  direction = BACK;
 }
 
 void changeDirectionRight(){
   // Only drive with left motor to turn
-  leftMotor.setMotorPwm(-130);
+  leftMotor.setMotorPwm(-SPEED);
   rightMotor.setMotorPwm(0);
   rightMotor.updateSpeed();
   leftMotor.updateSpeed();
   delay(1000);
-  driveForward(130);
+  driveForward();
+}
+void changeDirectionLeft(){
+  // Only drive with left motor to turn
+  leftMotor.setMotorPwm(0);
+  rightMotor.setMotorPwm(SPEED);
+  rightMotor.updateSpeed();
+  leftMotor.updateSpeed();
+  delay(1000);
+  driveForward();
+}
+
+void driveRight(){
+  if (direction == BACK) {
+    rightMotor.setMotorPwm(-SPEED+40);
+    rightMotor.updateSpeed();
+    leftMotor.setMotorPwm(SPEED);
+    leftMotor.updateSpeed();
+  } else {
+    rightMotor.setMotorPwm(-SPEED);
+    rightMotor.updateSpeed();
+    leftMotor.setMotorPwm(0);
+    leftMotor.updateSpeed();
+  }
+
+  delay(1000);
+  driveForward();
 }
 
 void loop() {
@@ -82,35 +113,37 @@ void loop() {
     case S1_IN_S2_IN: 
       Serial.println("Båda inne"); 
       if (direction == FORWARD) {
-        driveBack(130);
+        driveBack(SPEED);
         delay(500);
-        direction = BACK;
       } else if ( direction == BACK ) {
-        driveForward(130);
+        driveForward();
         delay(500);
-        direction = FORWARD;
       }
       break;
     case S1_IN_S2_OUT: 
-      Serial.println("Vänster inne"); 
+      Serial.println("Vänster inne");
+      if (direction == BACK) {
+        driveRight(); 
+      } else {
+        changeDirectionLeft();  
+      }
       
-      rightMotor.setMotorPwm(0);
-      leftMotor.setMotorPwm(0);
-      rightMotor.updateSpeed();
-      leftMotor.updateSpeed();
       break;
     case S1_OUT_S2_IN: 
-      Serial.println("Höger inne"); 
-      changeDirectionRight();
+      Serial.println("Höger inne");
+      if (direction == BACK) {
+        driveForward();
+      } else {
+        changeDirectionRight();  
+      }
+      
       break;
     case S1_OUT_S2_OUT: 
-      Serial.println("Båda ute, Kör framåt!"); 
+      Serial.println("Båda ute"); 
       if (direction == FORWARD) {
-        driveForward(130);
-        direction = FORWARD;
+        driveForward();
       } else if ( direction == BACK ) {
-        driveBack(130);
-        direction = BACK;
+        driveBack(SPEED);
       }
       break;
     default: break;
