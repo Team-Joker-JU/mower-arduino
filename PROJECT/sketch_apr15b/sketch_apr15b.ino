@@ -16,6 +16,8 @@ enum DIRECTION { FORWARD, BACK, LEFT, RIGHT };
 DIRECTION direction = BACK;
 int SPEED = 50;
 
+
+
 void isr_process_encoder1(void){
   if (digitalRead(rightMotor.getPortB()) == 0){
     rightMotor.pulsePosMinus();
@@ -41,6 +43,7 @@ void setup() {
   Serial.begin(115200);
   attachInterrupt(rightMotor.getIntNum(), isr_process_encoder1, RISING);
   attachInterrupt(leftMotor.getIntNum(), isr_process_encoder2, RISING);
+
 
   //Set PWM 8KHz
   TCCR1A = _BV(WGM10);
@@ -143,100 +146,178 @@ void motorStop(){
     leftMotor.updateSpeed();
     Serial.println("ultrasonic");
     Serial.println(ultraSensor.distanceCm());
-    delay(1000);
+    delay(500);
 }
 
-int startdir = 1;
-static char data;
-void loop() {
-  if (Serial.available()){
-    data = Serial.read();
-    Serial.readString();
-    Serial.println(data);
-  }
-  switch(data){
-    case '1':
-      driveForward();
-      Serial.println("HEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLOO");
-      break;
-    case '2':
-      motorStop();
-      Serial.println("ALOOOOOOOOOOOOOOOHA");
-      delay(5000);
-      break;
-    default: 
-      break;
-  }
+void manualDriveForward(){
+  
+    leftMotor.setMotorPwm(SPEED);
+    rightMotor.setMotorPwm(-SPEED);
+    leftMotor.updateSpeed();
+    rightMotor.updateSpeed();
+  
+}
 
-  if(startdir == 1){
-    driveForward();
-    startdir += 1;
-  }
+void manualDriveBackwards(){
+    leftMotor.setMotorPwm(-SPEED);
+    rightMotor.setMotorPwm(SPEED);
+    leftMotor.updateSpeed();
+    rightMotor.updateSpeed();
+}
+
+void manualDriveLeft(){
   
-  // put your main code here, to run repeatedly:
+    rightMotor.setMotorPwm(-SPEED);
+    rightMotor.updateSpeed();
+    leftMotor.setMotorPwm(-SPEED);
+    leftMotor.updateSpeed();
     
+}
+
+void manualDriveRight(){
   
-  int sensorState = lineFinder.readSensors();
-  switch(sensorState) {
-    case S1_IN_S2_IN: 
-      Serial.println("Båda inne"); 
-      Serial.write("båda inne");
-      if (direction == FORWARD) {
-        //driveBack();
-        int randomInt = random(1,3);
-        if(randomInt==1){
-          rightMotor.setMotorPwm(-SPEED);
-          rightMotor.updateSpeed();
-          leftMotor.setMotorPwm(-SPEED);
-          leftMotor.updateSpeed();
-        }
-        else if(randomInt==2){
-          rightMotor.setMotorPwm(SPEED);
-          rightMotor.updateSpeed();
-          leftMotor.setMotorPwm(SPEED);
-          leftMotor.updateSpeed();
-        }
-        int randomDelay = random(1000, 2001);
-        delay(randomDelay);
-      }
-      else {
-        driveForward();
-        delay(500);
-      }
-      break;
-    case S1_IN_S2_OUT: 
-      Serial.println("Vänster inne");
-      Serial.write("Vänster inne");
-      if (direction == BACK) {
-        driveRight(); 
-      } else {
-        //changeDirectionLeft();  
-        driveLeft();
-      }
-      
-      break;
-    case S1_OUT_S2_IN: 
-      Serial.println("Höger inne");
-      Serial.write("Höger inne");
-      if (direction == BACK) {
-        driveLeft();
-      } else {
-        //changeDirectionRight();
-        driveRight();
-          
-      }
-      
-      break;
-    case S1_OUT_S2_OUT: 
-      Serial.println("Båda ute"); 
-      Serial.write("Båda ute");
-      if (direction == FORWARD) {
-        driveForward();
-      } else {
-        driveBack();
-      }
-      break;
-    default: break;
+      rightMotor.setMotorPwm(SPEED);
+      rightMotor.updateSpeed();
+      leftMotor.setMotorPwm(SPEED);
+      leftMotor.updateSpeed(); 
+}
+
+
+int startdir = 1;
+char data;
+bool manual = false;
+
+void loop() {
+  data = ' ';
+  if (Serial.available()){
+    Serial.write("Före");
+    data = Serial.read();
+    Serial.println(data);
+    Serial.write("Efter");
   }
-  delay(50);
+  
+
+   if (data == '6' || manual == true){
+    switch(data){
+      case '1':
+        manualDriveForward();
+        Serial.println("HEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLOO");
+        Serial.write("Driving Forwards");
+        delay(50);
+        break;
+      case '2':
+        Serial.write("Turning left");
+        manualDriveLeft();
+        delay(50);
+        break;
+      case '3':
+
+        Serial.write("Turning right");
+        manualDriveRight();
+        delay(50);
+
+      break; 
+  
+      case '4':
+        Serial.write("Driving Backwards");
+        manualDriveBackwards();
+        delay(50);
+      
+      break;
+  
+      case '5':
+      Serial.write("breaking");
+      motorStop();
+      delay(50);
+      break; 
+  
+      case '6':
+      Serial.write("switcing mode");
+      if (manual == false){
+        manual = true;
+        Serial.write("MANUAL!!!!!!!!!!!!!!!");
+      }
+      else{
+        manual = false;
+        Serial.write("AUTONOMOUS!!!!!!!!!!!!!");
+      }
+      break;
+      
+      default: 
+        break;
+    }
+  }
+  if (manual == false){
+    if(startdir == 1){
+      driveForward();
+      startdir += 1;
+    }
+    
+    // put your main code here, to run repeatedly:
+      
+    
+    int sensorState = lineFinder.readSensors();
+    switch(sensorState) {
+      case S1_IN_S2_IN: 
+        Serial.println("Båda inne"); 
+        Serial.write("båda inne");
+        if (direction == FORWARD) {
+          //driveBack();
+          int randomInt = random(1,3);
+          if(randomInt==1){
+            rightMotor.setMotorPwm(-SPEED);
+            rightMotor.updateSpeed();
+            leftMotor.setMotorPwm(-SPEED);
+            leftMotor.updateSpeed();
+          }
+          else if(randomInt==2){
+            rightMotor.setMotorPwm(SPEED);
+            rightMotor.updateSpeed();
+            leftMotor.setMotorPwm(SPEED);
+            leftMotor.updateSpeed();
+          }
+          int randomDelay = random(1000, 2001);
+          delay(randomDelay);
+        }
+        else {
+          driveForward();
+          delay(500);
+        }
+        break;
+      case S1_IN_S2_OUT: 
+        Serial.println("Vänster inne");
+        Serial.write("Vänster inne");
+        if (direction == BACK) {
+          driveRight(); 
+        } else {
+          //changeDirectionLeft();  
+          driveLeft();
+        }
+        
+        break;
+      case S1_OUT_S2_IN: 
+        Serial.println("Höger inne");
+        Serial.write("Höger inne");
+        if (direction == BACK) {
+          driveLeft();
+        } else {
+          //changeDirectionRight();
+          driveRight();
+            
+        }
+        
+        break;
+      case S1_OUT_S2_OUT: 
+        Serial.println("Båda ute"); 
+        Serial.write("Båda ute");
+        if (direction == FORWARD) {
+          driveForward();
+        } else {
+          driveBack();
+        }
+        break;
+      default: break;
+    }
+    delay(50);
+  }
 }
