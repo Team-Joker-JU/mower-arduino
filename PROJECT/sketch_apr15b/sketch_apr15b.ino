@@ -59,29 +59,39 @@ void setup() {
 // 1 är HÖGER
 // 2 är VÄNSTER
 void driveForward(){
-  if (ultraSensor.distanceCm() < 20 ){
-    motorStop();
-  }
-  else{
-    leftMotor.setMotorPwm(SPEED);
-    rightMotor.setMotorPwm(-SPEED);
-    leftMotor.updateSpeed();
-    rightMotor.updateSpeed();
-    direction = FORWARD;
-  }
+
+  leftMotor.setMotorPwm(SPEED);
+  rightMotor.setMotorPwm(-SPEED);
+  leftMotor.updateSpeed();
+  rightMotor.updateSpeed();
+  direction = FORWARD;
 }
 
 void driveBack(){
-   if (ultraSensor.distanceCm() < 20 ){
+  
+  leftMotor.setMotorPwm(-SPEED);
+  rightMotor.setMotorPwm(SPEED);
+  leftMotor.updateSpeed();
+  rightMotor.updateSpeed();
+  direction = BACK;
+}
+
+void collisionDetection(){
+  if(ultraSensor.distanceCm() < 10){
+    
+    //driveBack();
+    //delay(500);
     motorStop();
-  }
-  else{
-    leftMotor.setMotorPwm(-SPEED);
-    rightMotor.setMotorPwm(SPEED);
-    leftMotor.updateSpeed();
-    rightMotor.updateSpeed();
-    direction = BACK;
+    int randomInt = random(1,3);
+    if(randomInt==1){
+      driveLeft();
     }
+    else if(randomInt==2){
+      driveRight();
+    }
+    
+  }
+  
 }
 /*
 void changeDirectionRight(){
@@ -144,7 +154,7 @@ void motorStop(){
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(0);
     leftMotor.updateSpeed();
-    Serial.println("ultrasonic");
+    //Serial.println("ultrasonic");
     Serial.println(ultraSensor.distanceCm());
     delay(500);
 }
@@ -187,13 +197,14 @@ int startdir = 1;
 char data;
 bool manual = false;
 
+
 void loop() {
+
+  
   data = ' ';
   if (Serial.available()){
-    Serial.write("Före");
     data = Serial.read();
     Serial.println(data);
-    Serial.write("Efter");
   }
   
 
@@ -219,6 +230,8 @@ void loop() {
       break; 
   
       case '4':
+
+        // long pulses = leftMotor.getPulsePos();
         Serial.write("Driving Backwards");
         manualDriveBackwards();
         delay(50);
@@ -247,11 +260,12 @@ void loop() {
         break;
     }
   }
-  if (manual == false){
+  if (manual == false){ //everything below is autonimus
     if(startdir == 1){
       driveForward();
       startdir += 1;
     }
+    collisionDetection();
     
     // put your main code here, to run repeatedly:
       
@@ -259,8 +273,6 @@ void loop() {
     int sensorState = lineFinder.readSensors();
     switch(sensorState) {
       case S1_IN_S2_IN: 
-        Serial.println("Båda inne"); 
-        Serial.write("båda inne");
         if (direction == FORWARD) {
           //driveBack();
           int randomInt = random(1,3);
@@ -285,8 +297,6 @@ void loop() {
         }
         break;
       case S1_IN_S2_OUT: 
-        Serial.println("Vänster inne");
-        Serial.write("Vänster inne");
         if (direction == BACK) {
           driveRight(); 
         } else {
@@ -296,8 +306,6 @@ void loop() {
         
         break;
       case S1_OUT_S2_IN: 
-        Serial.println("Höger inne");
-        Serial.write("Höger inne");
         if (direction == BACK) {
           driveLeft();
         } else {
@@ -308,8 +316,6 @@ void loop() {
         
         break;
       case S1_OUT_S2_OUT: 
-        Serial.println("Båda ute"); 
-        Serial.write("Båda ute");
         if (direction == FORWARD) {
           driveForward();
         } else {
