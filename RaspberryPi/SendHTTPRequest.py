@@ -1,9 +1,10 @@
 import requests
 
-URL = "https://ims_api.supppee.workers.dev/api/example"
+URL = "https://ims_api.supppee.workers.dev/api/coord"
 
-r = requests.get(url = URL)
+r = requests.post(url = URL)
 
 data = r.json()
 
 print(data)
+
