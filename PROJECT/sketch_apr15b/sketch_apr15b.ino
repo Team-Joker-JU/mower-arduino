@@ -78,9 +78,7 @@ void driveBack(){
 
 void collisionDetection(){
   if(ultraSensor.distanceCm() < 10){
-    
-    //driveBack();
-    //delay(500);
+    Serial.write("obstacle detected, chainging direction");
     motorStop();
     int randomInt = random(1,3);
     if(randomInt==1){
