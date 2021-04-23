@@ -168,14 +168,14 @@ void manualDriveForward(){
 
 void manualDriveBackwards(){
     leftMotor.setMotorPwm(-SPEED);
-    rightMotor.setMotorPwm(SPEED);
+    rightMotor.setMotorPwm(SPEED+30);
     leftMotor.updateSpeed();
     rightMotor.updateSpeed();
 }
 
 void manualDriveLeft(){
   
-    rightMotor.setMotorPwm(-SPEED);
+    rightMotor.setMotorPwm(-SPEED-30);
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(-SPEED);
     leftMotor.updateSpeed();
@@ -193,7 +193,10 @@ void manualDriveRight(){
 
 int startdir = 1;
 char data;
-bool manual = false;
+bool manual = true;
+
+long pulse =0;
+long pulse2 = 0;
 
 
 void loop() {
@@ -237,6 +240,14 @@ void loop() {
       break;
   
       case '5':
+      pulse2 = leftMotor.getPulsePos();
+      Serial.println("Left motor pulses");
+      Serial.println(pulse2);
+      pulse2 = rightMotor.getPulsePos();
+      Serial.println("Right motor pulses");
+      Serial.println(pulse2);
+      leftMotor.setPulsePos(pulse);
+      rightMotor.setPulsePos(pulse);
       Serial.write("breaking");
       motorStop();
       delay(50);
@@ -324,4 +335,5 @@ void loop() {
     }
     delay(50);
   }
+
 }
