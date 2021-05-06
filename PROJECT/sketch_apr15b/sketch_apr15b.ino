@@ -24,8 +24,6 @@ int startdir = 1;
 char data;
 bool manual = true;
 
-long pulse =0;
-long pulse2 = 0;
 float distanceX=0;
 float distanceY=0;
 
@@ -109,26 +107,7 @@ void collisionDetection(){
   }
   
 }
-/*
-void changeDirectionRight(){
-  // Only drive with left motor to turn
-  leftMotor.setMotorPwm(-SPEED);
-  rightMotor.setMotorPwm(0);
-  rightMotor.updateSpeed();
-  leftMotor.updateSpeed();
-  delay(1000);
-  driveForward();
-}
-void changeDirectionLeft(){
-  // Only drive with left motor to turn
-  leftMotor.setMotorPwm(0);
-  rightMotor.setMotorPwm(SPEED);
-  rightMotor.updateSpeed();
-  leftMotor.updateSpeed();
-  delay(1000);
-  driveForward();
-}
-*/
+
 void driveRight(){
   if (direction == BACK) {
     driveForward();
@@ -226,6 +205,7 @@ void updatePosition(float angle, int pulseRight, int pulseLeft){
   Serial.print(", ");
   Serial.print(distanceY);
   Serial.println(")");
+  
 }
 
 
@@ -278,33 +258,6 @@ void loop() {
       int leftPulses = leftMotor.getPulsePos();
       int rightPulses = rightMotor.getPulsePos();
       updatePosition(gyro.getAngleZ(), leftPulses, rightPulses);
-      /*
-      Serial.read();
-      pulse2 = leftMotor.getPulsePos();
-      Serial.println("Left motor pulses");
-      Serial.println(pulse2);
-      Serial.println("Left motor cm: ");
-      Serial.println(pulse2*0.056694);
-      distanceX=pulse2*0.056694*sin(gyro.getAngleZ()*(3.14/180));
-      Serial.println("distance x: ");
-      Serial.println(distanceX);
-      Serial.println("Angle:");
-      Serial.println(gyro.getAngleZ());
-      
-      
-      pulse2 = rightMotor.getPulsePos();
-      Serial.println("Right motor pulses");
-      Serial.println(pulse2);
-      Serial.println("Right motor cm: ");
-      Serial.println(pulse2*0.056694);
-      distanceY=-pulse2*0.056694*cos(gyro.getAngleZ()*(3.14/180));
-      Serial.println("Angle:");
-      Serial.println(gyro.getAngleZ());
-      Serial.println("distance y: ");
-      Serial.println(distanceY);
-      gyro.update();
-      delay(10);
-      */
       
       leftMotor.setPulsePos(pulse);
       rightMotor.setPulsePos(pulse);
