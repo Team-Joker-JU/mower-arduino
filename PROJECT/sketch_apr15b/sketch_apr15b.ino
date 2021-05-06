@@ -32,6 +32,8 @@ bool manual = true;
 
 float distanceX = 0;
 float distanceY = 0;
+int leftPulses = 0;
+int rightPulses = 0;
 
 void isr_process_encoder1(void)
 {
@@ -117,15 +119,16 @@ void driveRight()
   {
     driveForward();
     delay(100);
-    rightMotor.setMotorPwm(60);
+    rightMotor.setMotorPwm(SPEED);
     rightMotor.updateSpeed();
-    leftMotor.setMotorPwm(60);
+    leftMotor.setMotorPwm(SPEED);
     leftMotor.updateSpeed();
   }
   else
   {
     rightMotor.setMotorPwm(-SPEED);
     rightMotor.updateSpeed();
+    leftMotor.setMotorPwm(-SPEED);
     leftMotor.updateSpeed();
   }
   delay(500);
@@ -214,7 +217,7 @@ void updatePosition(float angle, int pulseRight, int pulseLeft)
 void loop()
 {
   gyro.update();
-  delay(10);
+  //delay(10);
   data = ' ';
   if (Serial.available())
   {
@@ -252,8 +255,8 @@ void loop()
       delay(50);
       break;
     case '5':
-      int leftPulses = leftMotor.getPulsePos();
-      int rightPulses = rightMotor.getPulsePos();
+      leftPulses = leftMotor.getPulsePos();
+      rightPulses = rightMotor.getPulsePos();
       updatePosition(gyro.getAngleZ(), leftPulses, rightPulses);
       Serial.write("breaking");
       motorStop();
@@ -261,7 +264,7 @@ void loop()
       break;
 
     case '6':
-      Serial.write("switcing mode");
+      Serial.write("switching mode");
       if (manual == false)
       {
         manual = true;
@@ -314,14 +317,28 @@ void loop()
       else
       {
         driveForward();
-        delay(500);
+        //delay(500);
       }
       break;
     case S1_IN_S2_OUT:
-      (direction == BACK) ? driveRight() : driveLeft();
+      if (direction == BACK)
+      {
+        driveRight();
+      }
+      else
+      {
+        driveLeft();
+      }
       break;
     case S1_OUT_S2_IN:
-      (direction == BACK) ? driveLeft() : driveRight();
+      if (direction == BACK)
+      {
+        driveLeft();
+      }
+      else
+      {
+        driveRight();
+      }
       break;
     case S1_OUT_S2_OUT:
       if (direction == FORWARD)
