@@ -318,26 +318,10 @@ void loop()
       }
       break;
     case S1_IN_S2_OUT:
-      if (direction == BACK)
-      {
-        driveRight();
-      }
-      else
-      {
-        driveLeft();
-      }
-
+      (direction == BACK) ? driveRight() : driveLeft();
       break;
     case S1_OUT_S2_IN:
-      if (direction == BACK)
-      {
-        driveLeft();
-      }
-      else
-      {
-        driveRight();
-      }
-
+      (direction == BACK) ? driveLeft() : driveRight();
       break;
     case S1_OUT_S2_OUT:
       if (direction == FORWARD)
