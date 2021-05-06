@@ -1,4 +1,7 @@
 #include <MeAuriga.h>
+#include <Wire.h>
+
+MeGyro gyro(0,0x69);
 
 // For line
 MeLineFollower lineFinder(PORT_6);
@@ -15,7 +18,16 @@ enum DIRECTION { FORWARD, BACK, LEFT, RIGHT };
 
 DIRECTION direction = BACK;
 int SPEED = 50;
+float previousX=0;
+float previousY=0;
+int startdir = 1;
+char data;
+bool manual = true;
 
+long pulse =0;
+long pulse2 = 0;
+float distanceX=0;
+float distanceY=0;
 
 
 void isr_process_encoder1(void){
@@ -41,8 +53,10 @@ void isr_process_encoder2(void)
 
 void setup() {
   Serial.begin(115200);
+  gyro.begin();
   attachInterrupt(rightMotor.getIntNum(), isr_process_encoder1, RISING);
   attachInterrupt(leftMotor.getIntNum(), isr_process_encoder2, RISING);
+  
 
 
   //Set PWM 8KHz
@@ -60,8 +74,10 @@ void setup() {
 // 2 är VÄNSTER
 void driveForward(){
 
-  leftMotor.setMotorPwm(SPEED);
-  rightMotor.setMotorPwm(-SPEED);
+  //leftMotor.setMotorPwm(SPEED);
+  //rightMotor.setMotorPwm(-SPEED);
+  leftMotor.setMotorPwm(60);
+  rightMotor.setMotorPwm(-60);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
   direction = FORWARD;
@@ -69,8 +85,10 @@ void driveForward(){
 
 void driveBack(){
   
-  leftMotor.setMotorPwm(-SPEED);
-  rightMotor.setMotorPwm(SPEED);
+  //leftMotor.setMotorPwm(-SPEED);
+  //rightMotor.setMotorPwm(SPEED);
+  leftMotor.setMotorPwm(-60);
+  rightMotor.setMotorPwm(60);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
   direction = BACK;
@@ -115,14 +133,18 @@ void driveRight(){
   if (direction == BACK) {
     driveForward();
     delay(100);
-    rightMotor.setMotorPwm(SPEED);
+    //rightMotor.setMotorPwm(SPEED);
+    rightMotor.setMotorPwm(60);
     rightMotor.updateSpeed();
-    leftMotor.setMotorPwm(SPEED);
+    //leftMotor.setMotorPwm(SPEED);
+    leftMotor.setMotorPwm(60);
     leftMotor.updateSpeed();
   } else {
+    //rightMotor.setMotorPwm(-SPEED);
     rightMotor.setMotorPwm(-SPEED);
     rightMotor.updateSpeed();
-    leftMotor.setMotorPwm(-SPEED);
+    //leftMotor.setMotorPwm(-SPEED);
+    
     leftMotor.updateSpeed();
   }
   delay(500);
@@ -168,14 +190,14 @@ void manualDriveForward(){
 
 void manualDriveBackwards(){
     leftMotor.setMotorPwm(-SPEED);
-    rightMotor.setMotorPwm(SPEED+30);
+    rightMotor.setMotorPwm(SPEED);
     leftMotor.updateSpeed();
     rightMotor.updateSpeed();
 }
 
 void manualDriveLeft(){
   
-    rightMotor.setMotorPwm(-SPEED-30);
+    rightMotor.setMotorPwm(-SPEED);
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(-SPEED);
     leftMotor.updateSpeed();
@@ -190,18 +212,28 @@ void manualDriveRight(){
       leftMotor.updateSpeed(); 
 }
 
+void updatePosition(float angle, int pulseRight, int pulseLeft){
+  
+  int averagePulses=(pulseLeft + (-pulseRight))/2;
+  distanceX=-averagePulses*0.056694*sin(angle*(3.14/180))+previousX;
+  distanceY=-averagePulses*0.056694*cos(angle*(3.14/180))+previousY;
+  leftMotor.setPulsePos(0);
+  rightMotor.setPulsePos(0);
+  previousX=distanceX;
+  previousY=distanceY;
+  Serial.print("(");
+  Serial.print(distanceX);
+  Serial.print(", ");
+  Serial.print(distanceY);
+  Serial.println(")");
+}
 
-int startdir = 1;
-char data;
-bool manual = true;
 
-long pulse =0;
-long pulse2 = 0;
 
 
 void loop() {
-
-  
+  gyro.update();
+  delay(10);
   data = ' ';
   if (Serial.available()){
     data = Serial.read();
@@ -221,13 +253,16 @@ void loop() {
         Serial.write("Turning left");
         manualDriveLeft();
         delay(50);
+        leftMotor.setPulsePos(0);
+        rightMotor.setPulsePos(0);
         break;
       case '3':
 
         Serial.write("Turning right");
         manualDriveRight();
         delay(50);
-
+        leftMotor.setPulsePos(0);
+        rightMotor.setPulsePos(0);
       break; 
   
       case '4':
@@ -240,12 +275,37 @@ void loop() {
       break;
   
       case '5':
+      int leftPulses = leftMotor.getPulsePos();
+      int rightPulses = rightMotor.getPulsePos();
+      updatePosition(gyro.getAngleZ(), leftPulses, rightPulses);
+      /*
+      Serial.read();
       pulse2 = leftMotor.getPulsePos();
       Serial.println("Left motor pulses");
       Serial.println(pulse2);
+      Serial.println("Left motor cm: ");
+      Serial.println(pulse2*0.056694);
+      distanceX=pulse2*0.056694*sin(gyro.getAngleZ()*(3.14/180));
+      Serial.println("distance x: ");
+      Serial.println(distanceX);
+      Serial.println("Angle:");
+      Serial.println(gyro.getAngleZ());
+      
+      
       pulse2 = rightMotor.getPulsePos();
       Serial.println("Right motor pulses");
       Serial.println(pulse2);
+      Serial.println("Right motor cm: ");
+      Serial.println(pulse2*0.056694);
+      distanceY=-pulse2*0.056694*cos(gyro.getAngleZ()*(3.14/180));
+      Serial.println("Angle:");
+      Serial.println(gyro.getAngleZ());
+      Serial.println("distance y: ");
+      Serial.println(distanceY);
+      gyro.update();
+      delay(10);
+      */
+      
       leftMotor.setPulsePos(pulse);
       rightMotor.setPulsePos(pulse);
       Serial.write("breaking");
