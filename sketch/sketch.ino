@@ -151,8 +151,8 @@ void coordinate_handler(int interval) {
     gyro.update();
     float angle = 360 - (gyro.getAngleZ() + 180);
     
-    float rightDistance = ((rightMotor.getPulsePos() - startRightPosition) / 360) * 20;
-    float leftDistance = ((leftMotor.getPulsePos() - startLeftPosition) / 360) * 20;
+    float rightDistance = ((rightMotor.getPulsePos() - startRightPosition) / 360) * 20.41;
+    float leftDistance = ((leftMotor.getPulsePos() - startLeftPosition) / 360) * 20.41;
 
     float maxDistance = max(abs(rightDistance), abs(leftDistance));
 
@@ -180,8 +180,6 @@ void coordinate_handler(int interval) {
 
 void auto_mode() {
   if (collision(10)) {
-    on_acceleration_changed(current_acceleration * -1);
-    delay(1000);
     ((random(0, 2) == 0) ? &turn_left : &turn_right)(1000);
     return;
   }
