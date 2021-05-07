@@ -43,7 +43,7 @@ void isr_process_encoder2(void)
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.flush();
 
   gyro.begin();
@@ -66,7 +66,7 @@ void loop() {
   process_message_protocol();
   delay(10);
   
-  coordinate_handler(500);
+  coordinate_handler(2000);
   auto_mode();
 }
 
@@ -180,7 +180,7 @@ void coordinate_handler(int interval) {
 
 void auto_mode() {
   if (collision(10)) {
-    ((random(0, 2) == 0) ? &turn_left : &turn_right)(1000);
+    ((random(0, 2) == 0) ? &turn_left : &turn_right)(500);
     return;
   }
 
