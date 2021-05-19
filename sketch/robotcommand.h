@@ -12,6 +12,5 @@ enum RobotCommand : int8_t
   STEERING = 4,
   COLLISION = 5
 };
-  
 
 #endif
