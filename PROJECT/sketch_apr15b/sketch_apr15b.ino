@@ -1,4 +1,7 @@
 #include <MeAuriga.h>
+#include <Wire.h>
+
+MeGyro gyro(0, 0x69);
 
 // For line
 MeLineFollower lineFinder(PORT_6);
@@ -11,25 +14,42 @@ MeEncoderOnBoard leftMotor(SLOT2);
 MeUltrasonicSensor ultraSensor(PORT_7);
 
 // Global direction
-enum DIRECTION { FORWARD, BACK, LEFT, RIGHT };
+enum DIRECTION
+{
+  FORWARD,
+  BACK,
+  LEFT,
+  RIGHT
+};
 
 DIRECTION direction = BACK;
 int SPEED = 50;
+float previousX = 0;
+float previousY = 0;
+int startdir = 1;
+char data;
+bool manual = true;
 
+float distanceX = 0;
+float distanceY = 0;
+int leftPulses = 0;
+int rightPulses = 0;
 
-
-void isr_process_encoder1(void){
-  if (digitalRead(rightMotor.getPortB()) == 0){
+void isr_process_encoder1(void)
+{
+  if (digitalRead(rightMotor.getPortB()) == 0)
+  {
     rightMotor.pulsePosMinus();
   }
-  else {
+  else
+  {
     rightMotor.pulsePosPlus();
   }
 }
 
 void isr_process_encoder2(void)
 {
-  if(digitalRead(leftMotor.getPortB()) == 0)
+  if (digitalRead(leftMotor.getPortB()) == 0)
   {
     leftMotor.pulsePosMinus();
   }
@@ -39,11 +59,12 @@ void isr_process_encoder2(void)
   }
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
+  gyro.begin();
   attachInterrupt(rightMotor.getIntNum(), isr_process_encoder1, RISING);
   attachInterrupt(leftMotor.getIntNum(), isr_process_encoder2, RISING);
-
 
   //Set PWM 8KHz
   TCCR1A = _BV(WGM10);
@@ -53,73 +74,58 @@ void setup() {
   TCCR2B = _BV(CS21);
 }
 
-
-
 // OM VÄNSTER ÄR NEGATIV OCH HÖGER POSITIV SÅ GÅR DEN BAKÅT
 // 1 är HÖGER
 // 2 är VÄNSTER
-void driveForward(){
-
-  leftMotor.setMotorPwm(SPEED);
-  rightMotor.setMotorPwm(-SPEED);
+void driveForward()
+{
+  leftMotor.setMotorPwm(60);
+  rightMotor.setMotorPwm(-60);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
   direction = FORWARD;
 }
 
-void driveBack(){
-  
-  leftMotor.setMotorPwm(-SPEED);
-  rightMotor.setMotorPwm(SPEED);
+void driveBack()
+{
+  leftMotor.setMotorPwm(-60);
+  rightMotor.setMotorPwm(60);
   leftMotor.updateSpeed();
   rightMotor.updateSpeed();
   direction = BACK;
 }
 
-void collisionDetection(){
-  if(ultraSensor.distanceCm() < 10){
+void collisionDetection()
+{
+  if (ultraSensor.distanceCm() < 10)
+  {
     Serial.write("obstacle detected, chainging direction");
     motorStop();
-    int randomInt = random(1,3);
-    if(randomInt==1){
+    int randomInt = random(1, 3);
+    if (randomInt == 1)
+    {
       driveLeft();
     }
-    else if(randomInt==2){
+    else if (randomInt == 2)
+    {
       driveRight();
     }
-    
   }
-  
 }
-/*
-void changeDirectionRight(){
-  // Only drive with left motor to turn
-  leftMotor.setMotorPwm(-SPEED);
-  rightMotor.setMotorPwm(0);
-  rightMotor.updateSpeed();
-  leftMotor.updateSpeed();
-  delay(1000);
-  driveForward();
-}
-void changeDirectionLeft(){
-  // Only drive with left motor to turn
-  leftMotor.setMotorPwm(0);
-  rightMotor.setMotorPwm(SPEED);
-  rightMotor.updateSpeed();
-  leftMotor.updateSpeed();
-  delay(1000);
-  driveForward();
-}
-*/
-void driveRight(){
-  if (direction == BACK) {
+
+void driveRight()
+{
+  if (direction == BACK)
+  {
     driveForward();
     delay(100);
     rightMotor.setMotorPwm(SPEED);
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(SPEED);
     leftMotor.updateSpeed();
-  } else {
+  }
+  else
+  {
     rightMotor.setMotorPwm(-SPEED);
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(-SPEED);
@@ -129,211 +135,224 @@ void driveRight(){
   driveForward();
 }
 
-
-void driveLeft(){
-  if (direction == BACK){
+void driveLeft()
+{
+  if (direction == BACK)
+  {
     driveForward();
     delay(100);
     rightMotor.setMotorPwm(-SPEED);
     rightMotor.updateSpeed();
     leftMotor.setMotorPwm(-SPEED);
     leftMotor.updateSpeed();
-    } else {
-      rightMotor.setMotorPwm(SPEED);
-      rightMotor.updateSpeed();
-      leftMotor.setMotorPwm(SPEED);
-      leftMotor.updateSpeed();
-    }
-    delay(500);
-    driveForward();
-}
-void motorStop(){
-    rightMotor.setMotorPwm(0);
+  }
+  else
+  {
+    rightMotor.setMotorPwm(SPEED);
     rightMotor.updateSpeed();
-    leftMotor.setMotorPwm(0);
-    leftMotor.updateSpeed();
-    //Serial.println("ultrasonic");
-    Serial.println(ultraSensor.distanceCm());
-    delay(500);
-}
-
-void manualDriveForward(){
-  
     leftMotor.setMotorPwm(SPEED);
-    rightMotor.setMotorPwm(-SPEED);
     leftMotor.updateSpeed();
-    rightMotor.updateSpeed();
-  
+  }
+  delay(500);
+  driveForward();
+}
+void motorStop()
+{
+  rightMotor.setMotorPwm(0);
+  rightMotor.updateSpeed();
+  leftMotor.setMotorPwm(0);
+  leftMotor.updateSpeed();
+  Serial.println(ultraSensor.distanceCm());
+  delay(500);
 }
 
-void manualDriveBackwards(){
-    leftMotor.setMotorPwm(-SPEED);
-    rightMotor.setMotorPwm(SPEED+30);
-    leftMotor.updateSpeed();
-    rightMotor.updateSpeed();
+void manualDriveForward()
+{
+  leftMotor.setMotorPwm(SPEED);
+  rightMotor.setMotorPwm(-SPEED);
+  leftMotor.updateSpeed();
+  rightMotor.updateSpeed();
 }
 
-void manualDriveLeft(){
-  
-    rightMotor.setMotorPwm(-SPEED-30);
-    rightMotor.updateSpeed();
-    leftMotor.setMotorPwm(-SPEED);
-    leftMotor.updateSpeed();
-    
+void manualDriveBackwards()
+{
+  leftMotor.setMotorPwm(-SPEED);
+  rightMotor.setMotorPwm(SPEED);
+  leftMotor.updateSpeed();
+  rightMotor.updateSpeed();
 }
 
-void manualDriveRight(){
-  
-      rightMotor.setMotorPwm(SPEED);
-      rightMotor.updateSpeed();
-      leftMotor.setMotorPwm(SPEED);
-      leftMotor.updateSpeed(); 
+void manualDriveLeft()
+{
+  rightMotor.setMotorPwm(-SPEED);
+  rightMotor.updateSpeed();
+  leftMotor.setMotorPwm(-SPEED);
+  leftMotor.updateSpeed();
 }
 
+void manualDriveRight()
+{
+  rightMotor.setMotorPwm(SPEED);
+  rightMotor.updateSpeed();
+  leftMotor.setMotorPwm(SPEED);
+  leftMotor.updateSpeed();
+}
 
-int startdir = 1;
-char data;
-bool manual = true;
+void updatePosition(float angle, int pulseRight, int pulseLeft)
+{
+  int averagePulses = (pulseLeft + (-pulseRight)) / 2;
+  distanceX = -averagePulses * 0.056694 * sin(angle * (3.14 / 180)) + previousX;
+  distanceY = -averagePulses * 0.056694 * cos(angle * (3.14 / 180)) + previousY;
+  leftMotor.setPulsePos(0);
+  rightMotor.setPulsePos(0);
+  previousX = distanceX;
+  previousY = distanceY;
+  Serial.print("(");
+  Serial.print(distanceX);
+  Serial.print(", ");
+  Serial.print(distanceY);
+  Serial.println(")");
+}
 
-long pulse =0;
-long pulse2 = 0;
-
-
-void loop() {
-
-  
+void loop()
+{
+  gyro.update();
+  //delay(10);
   data = ' ';
-  if (Serial.available()){
+  if (Serial.available())
+  {
     data = Serial.read();
     Serial.println(data);
   }
-  
 
-   if (data == '6' || manual == true){
-    switch(data){
-      case '1':
-        manualDriveForward();
-        Serial.println("HEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLOO");
-        Serial.write("Driving Forwards");
-        delay(50);
-        break;
-      case '2':
-        Serial.write("Turning left");
-        manualDriveLeft();
-        delay(50);
-        break;
-      case '3':
-
-        Serial.write("Turning right");
-        manualDriveRight();
-        delay(50);
-
-      break; 
-  
-      case '4':
-
-        // long pulses = leftMotor.getPulsePos();
-        Serial.write("Driving Backwards");
-        manualDriveBackwards();
-        delay(50);
-      
+  if (data == '6' || manual == true)
+  {
+    switch (data)
+    {
+    case '1':
+      manualDriveForward();
+      Serial.write("Driving Forwards");
+      delay(50);
       break;
-  
-      case '5':
-      pulse2 = leftMotor.getPulsePos();
-      Serial.println("Left motor pulses");
-      Serial.println(pulse2);
-      pulse2 = rightMotor.getPulsePos();
-      Serial.println("Right motor pulses");
-      Serial.println(pulse2);
-      leftMotor.setPulsePos(pulse);
-      rightMotor.setPulsePos(pulse);
+    case '2':
+      Serial.write("Turning left");
+      manualDriveLeft();
+      delay(50);
+      leftMotor.setPulsePos(0);
+      rightMotor.setPulsePos(0);
+      break;
+    case '3':
+      Serial.write("Turning right");
+      manualDriveRight();
+      delay(50);
+      leftMotor.setPulsePos(0);
+      rightMotor.setPulsePos(0);
+      break;
+
+    case '4':
+      Serial.write("Driving Backwards");
+      manualDriveBackwards();
+      delay(50);
+      break;
+    case '5':
+      leftPulses = leftMotor.getPulsePos();
+      rightPulses = rightMotor.getPulsePos();
+      updatePosition(gyro.getAngleZ(), leftPulses, rightPulses);
       Serial.write("breaking");
       motorStop();
       delay(50);
-      break; 
-  
-      case '6':
-      Serial.write("switcing mode");
-      if (manual == false){
+      break;
+
+    case '6':
+      Serial.write("switching mode");
+      if (manual == false)
+      {
         manual = true;
-        Serial.write("MANUAL!!!!!!!!!!!!!!!");
+        Serial.write("Manual mode.");
       }
-      else{
+      else
+      {
         manual = false;
-        Serial.write("AUTONOMOUS!!!!!!!!!!!!!");
+        Serial.write("Automatic mode.");
       }
       break;
-      
-      default: 
-        break;
+
+    default:
+      break;
     }
   }
-  if (manual == false){ //everything below is autonimus
-    if(startdir == 1){
+  if (manual == false)
+  { //everything below is autonimus
+    if (startdir == 1)
+    {
       driveForward();
       startdir += 1;
     }
     collisionDetection();
-    
-    // put your main code here, to run repeatedly:
-      
-    
+
     int sensorState = lineFinder.readSensors();
-    switch(sensorState) {
-      case S1_IN_S2_IN: 
-        if (direction == FORWARD) {
-          //driveBack();
-          int randomInt = random(1,3);
-          if(randomInt==1){
-            rightMotor.setMotorPwm(-SPEED);
-            rightMotor.updateSpeed();
-            leftMotor.setMotorPwm(-SPEED);
-            leftMotor.updateSpeed();
-          }
-          else if(randomInt==2){
-            rightMotor.setMotorPwm(SPEED);
-            rightMotor.updateSpeed();
-            leftMotor.setMotorPwm(SPEED);
-            leftMotor.updateSpeed();
-          }
-          int randomDelay = random(1000, 2001);
-          delay(randomDelay);
+    switch (sensorState)
+    {
+    case S1_IN_S2_IN:
+      if (direction == FORWARD)
+      {
+        int randomInt = random(1, 3);
+        if (randomInt == 1)
+        {
+          rightMotor.setMotorPwm(-SPEED);
+          rightMotor.updateSpeed();
+          leftMotor.setMotorPwm(-SPEED);
+          leftMotor.updateSpeed();
         }
-        else {
-          driveForward();
-          delay(500);
+        else if (randomInt == 2)
+        {
+          rightMotor.setMotorPwm(SPEED);
+          rightMotor.updateSpeed();
+          leftMotor.setMotorPwm(SPEED);
+          leftMotor.updateSpeed();
         }
-        break;
-      case S1_IN_S2_OUT: 
-        if (direction == BACK) {
-          driveRight(); 
-        } else {
-          //changeDirectionLeft();  
-          driveLeft();
-        }
-        
-        break;
-      case S1_OUT_S2_IN: 
-        if (direction == BACK) {
-          driveLeft();
-        } else {
-          //changeDirectionRight();
-          driveRight();
-            
-        }
-        
-        break;
-      case S1_OUT_S2_OUT: 
-        if (direction == FORWARD) {
-          driveForward();
-        } else {
-          driveBack();
-        }
-        break;
-      default: break;
+        int randomDelay = random(1000, 2001);
+        delay(randomDelay);
+      }
+      else
+      {
+        driveForward();
+        //delay(500);
+      }
+      break;
+    case S1_IN_S2_OUT:
+      if (direction == BACK)
+      {
+        driveRight();
+      }
+      else
+      {
+        driveLeft();
+      }
+      break;
+    case S1_OUT_S2_IN:
+      if (direction == BACK)
+      {
+        driveLeft();
+      }
+      else
+      {
+        driveRight();
+      }
+      break;
+    case S1_OUT_S2_OUT:
+      if (direction == FORWARD)
+      {
+        driveForward();
+      }
+      else
+      {
+        driveBack();
+      }
+      break;
+    default:
+      break;
     }
     delay(50);
   }
-
 }
