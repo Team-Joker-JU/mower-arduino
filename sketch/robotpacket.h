@@ -17,6 +17,8 @@ class RobotPacket {
     RobotPacket(RobotCommand command, int8_t* buffer);
     RobotCommand get_command();
     T get_parameter();
+    void to_bytes(int8_t* buffer);
+    int32_t get_length();
 };
 
 #endif

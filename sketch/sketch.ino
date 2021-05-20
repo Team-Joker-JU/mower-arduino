@@ -5,26 +5,17 @@
 #include <MeAuriga.h>
 #include <Wire.h>
 
-// For gyroscope
+#define BUZZER_PORT 45
+#define RGB_LED_PORT 44
+
+// For mBot
 MeGyro gyro(0, 0x69);
-
-// For line follower
 MeLineFollower lineFinder(PORT_6);
-
-// For motors
 MeEncoderOnBoard rightMotor(SLOT1);
 MeEncoderOnBoard leftMotor(SLOT2);
-
-// For UltrasonicSensor
 MeUltrasonicSensor ultraSensor(PORT_7);
-
-
-
-boolean connected = false;
-int8_t current_acceleration;
-int8_t current_steering;
-
-
+MeBuzzer buzzer;
+MeRGBLed led( 0, 12 );
 
 void isr_process_encoder1(void)
 {
@@ -42,6 +33,12 @@ void isr_process_encoder2(void)
     leftMotor.pulsePosPlus();
 }
 
+int8_t current_acceleration;
+int8_t current_steering;
+
+boolean isConnected = false;
+boolean isAutomove = false;
+
 void setup() {
   Serial.begin(115200);
   Serial.flush();
@@ -57,21 +54,23 @@ void setup() {
   TCCR2A = _BV(WGM21) | _BV(WGM20);
   TCCR2B = _BV(CS21);
 
-
-  // Start
-  on_acceleration_changed(60);
+  buzzer.setpin(BUZZER_PORT);
+  led.setpin(RGB_LED_PORT);
 }
+
+int counter = 0;
 
 void loop() {
   process_message_protocol();
+
+  if (isAutomove && isConnected)
+    auto_move()
+    
   delay(10);
-  
-  coordinate_handler(2000);
-  auto_mode();
 }
 
-void on_handshake_completed() {
-  connected = true;
+void on_connected() {
+  isConnected = true;
   
   /* TODO: Implement some handshake functionality, for example:
    * 
@@ -80,6 +79,15 @@ void on_handshake_completed() {
   */
 }
 
+void on_disconnected() {
+  isConnected = false;
+  
+  /* TODO: Implement some handshake functionality, for example:
+   * 
+   * - Blink with LEDs
+   * - Buzzer noise
+  */
+}
 
 void on_acceleration_changed(int8_t acceleration) {
   // TODO: Assign value to robot
@@ -106,9 +114,9 @@ bool collision(int distance)
   return (ultraSensor.distanceCm() < distance);
 }
 
-void update_motion(int8_t acceleration, int8_t steering) {
+void update_motion(int8_t acceleration, int8_t steering) { 
   float normalized = 1.0f - ((float)abs(steering) / 100.0f);
-  int turnAcceleration = (normalized > 0.1f) ? (int)(acceleration * normalized) : acceleration * -1;
+  int turnAcceleration = (normalized > 0.4f) ? (int)(acceleration * normalized) : acceleration * -1;
   
   // Right turn
   if (steering > 0) {
@@ -132,7 +140,15 @@ void update_motion(int8_t acceleration, int8_t steering) {
 
 
 
-
+void collision_handler(int triggerDistance) {
+  int8_t distance = static_cast<int8_t>(ultraSensor.distanceCm())
+  if (distance < triggerDistance) {
+    int8_t buffer[packet.get_length()];
+    RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance);
+    packet.to_bytes(buffer);
+    write_n_bytes(buffer, packet.get_length());
+  }
+}
 
 void coordinate_handler(int interval) {
   static unsigned long startTime = millis();
@@ -178,9 +194,10 @@ void coordinate_handler(int interval) {
 }
 
 
+
 void auto_mode() {
   if (collision(10)) {
-    ((random(0, 2) == 0) ? &turn_left : &turn_right)(500);
+    ((random(0, 2) == 0) ? &turn_left : &turn_right)(1000);
     return;
   }
 
@@ -229,33 +246,110 @@ void read_n_bytes(int8_t* buffer, const int n) {
   }
 }
 
+void write_n_bytes(int8_t* buffer, const int n) {
+  for (size_t i = 0; i < n; i++)
+    Serial.write(buffer[i]);
+}
+
 
 void process_message_protocol() {
   int8_t buffer[64];
 
   if (Serial.available() > 0) {
     RobotCommand command = static_cast<RobotCommand>(Serial.read());
-    
-    if (command == HANDSHAKE && !connected) {     
-        Serial.write((uint8_t*)HANDSHAKE, sizeof(uint8_t));
-        on_handshake_completed();
-        
-    } else {
-      
-      switch(command) {
-      case ACCELERATION:
-        Serial.println("on_acceleration_changed switched"); 
-        read_n_bytes(buffer, sizeof(int8_t));
-        on_acceleration_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
-        break;
-      case STEERING:
-        Serial.println("on_steering_changed switched"); 
-        read_n_bytes(buffer, sizeof(int8_t));
-        on_steering_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
-        break;
-      }
-    
-      Serial.write((uint8_t*)RECEIVED, sizeof(uint8_t));
+
+    if (command == CONNECTED && !isConnected) {
+      on_connected();
+      return;
+    }
+  
+    switch(command) {
+    case DISCONNECTED:
+      on_disconnected();
+      break;
+    case ACCELERATION:
+      read_n_bytes(buffer, sizeof(int8_t));
+      on_acceleration_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
+      break;
+    case STEERING:
+      read_n_bytes(buffer, sizeof(int8_t));
+      on_steering_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
+      break;
     }
   }
 }
+
+/*
+void play_hanshake() 
+{
+  int pitch = 2;
+  
+  // Van Halen - Talkin' Bout Love - Guitar Solo
+  led.setColorAt(0, 100, 0, 0);
+  led.setColorAt(6, 100, 0, 0);
+  led.show();
+  on_acceleration_changed(100);
+  on_steering_changed(100);
+  buzzer.tone(330 * pitch, 250); // E
+  
+  led.setColorAt(1, 0, 0, 100);
+  led.setColorAt(7, 0, 0, 100);
+  led.show();
+  on_acceleration_changed(-100);
+  buzzer.tone(392 * pitch, 250); // G
+  
+  led.setColorAt(2, 0, 100, 0);
+  led.setColorAt(8, 0, 100, 0);
+  led.show();
+  on_acceleration_changed(100);
+  buzzer.tone(440 * pitch, 250); // A
+  
+  led.setColorAt(3, 100, 0, 100);
+  led.setColorAt(9, 100, 0, 100);
+  led.show();
+  on_acceleration_changed(-100);
+  buzzer.tone(440 * pitch, 100); // A
+  
+  led.setColorAt(4, 0, 100, 100);
+  led.setColorAt(10, 0, 100, 100);
+  led.show();
+  on_acceleration_changed(100);
+  buzzer.tone(440 * pitch, 250); // A
+  
+  led.setColorAt(5, 100, 100, 0);
+  led.setColorAt(11, 100, 100, 0);
+  led.show();
+  on_acceleration_changed(-100);
+  buzzer.tone(440 * pitch, 100); // A
+  
+  for (int i = 0; i < 12; i++) {
+    led.setColorAt(i, 175, 175, 175);
+    led.show();
+  }
+  on_acceleration_changed(100);
+  buzzer.tone(494 * pitch, 250); // B
+  
+  for (int i = 0; i < 12; i++) {
+    led.setColorAt(i, 255, 255, 255);
+    led.show();
+  }
+  on_acceleration_changed(-100);
+  buzzer.tone(392 * pitch, 500); // G
+  
+  on_acceleration_changed(0);
+  on_steering_changed(0);
+  
+  for (int i = 0; i < 12; i++) {
+    led.setColorAt(i, 0, 255, 0);
+    buzzer.tone(50 * i, 50);
+    led.show();
+  }
+
+  for (int i = 0; i < 12; i++) {
+    led.setColorAt(i, 0, 0, 0);
+    buzzer.tone(550 - (i * 50), 50);
+    led.show();
+  }
+
+  buzzer.noTone();
+}*/

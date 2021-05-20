@@ -5,12 +5,11 @@
 
 enum RobotCommand : int8_t
 {
-  HANDSHAKE = 0,
-  CONNECTED = 1,
-  RECEIVED  = 2,
-  ACCELERATION = 3,
-  STEERING = 4,
-  COLLISION = 5
+  CONNECTED = 0,
+  DISCONNECTED = 1,
+  ACCELERATION = 2,
+  STEERING = 3,
+  COLLISION = 4
 };
   
 
