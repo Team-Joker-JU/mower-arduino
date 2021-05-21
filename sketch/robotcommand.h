@@ -9,7 +9,8 @@ enum RobotCommand : int8_t
   DISCONNECTED = 1,
   ACCELERATION = 2,
   STEERING = 3,
-  COLLISION = 4
+  COLLISION = 4,
+  MODE = 5
 };
   
 

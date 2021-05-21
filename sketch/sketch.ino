@@ -56,6 +56,8 @@ void setup() {
 
   buzzer.setpin(BUZZER_PORT);
   led.setpin(RGB_LED_PORT);
+
+  //on_acceleration_changed(40);
 }
 
 int counter = 0;
@@ -64,7 +66,7 @@ void loop() {
   process_message_protocol();
 
   if (isAutomove && isConnected)
-    auto_move()
+    auto_mode();
     
   delay(10);
 }
@@ -77,6 +79,7 @@ void on_connected() {
    * - Blink with LEDs
    * - Buzzer noise
   */
+  play_hanshake();  
 }
 
 void on_disconnected() {
@@ -91,8 +94,8 @@ void on_disconnected() {
 
 void on_acceleration_changed(int8_t acceleration) {
   // TODO: Assign value to robot
-  Serial.println("on_acceleration_changed triggered"); 
-  Serial.println(String(acceleration));
+  //Serial.println("on_acceleration_changed triggered"); 
+  //Serial.println(String(acceleration));
   
   current_acceleration = acceleration;
   update_motion(current_acceleration, current_steering);
@@ -101,11 +104,19 @@ void on_acceleration_changed(int8_t acceleration) {
 
 void on_steering_changed(int8_t steering) {
   // TODO: Assign value to robot
-  Serial.println("on_steering_changed triggered"); 
-  Serial.println(String(steering));
+  //Serial.println("on_steering_changed triggered"); 
+  //Serial.println(String(steering));
   
   current_steering = steering;
   update_motion(current_acceleration, current_steering);
+}
+void on_mode_changed(){
+   isAutomove = !isAutomove;
+
+   if (isAutomove)
+    on_acceleration_changed(60);
+   else
+    on_acceleration_changed(0);
 }
 
 
@@ -116,7 +127,7 @@ bool collision(int distance)
 
 void update_motion(int8_t acceleration, int8_t steering) { 
   float normalized = 1.0f - ((float)abs(steering) / 100.0f);
-  int turnAcceleration = (normalized > 0.4f) ? (int)(acceleration * normalized) : acceleration * -1;
+  int turnAcceleration = (normalized > 0.2f) ? (int)(acceleration * normalized) : acceleration * -1;
   
   // Right turn
   if (steering > 0) {
@@ -141,12 +152,13 @@ void update_motion(int8_t acceleration, int8_t steering) {
 
 
 void collision_handler(int triggerDistance) {
-  int8_t distance = static_cast<int8_t>(ultraSensor.distanceCm())
+  int8_t distance = static_cast<int8_t>(ultraSensor.distanceCm());
   if (distance < triggerDistance) {
-    int8_t buffer[packet.get_length()];
     RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance);
-    packet.to_bytes(buffer);
-    write_n_bytes(buffer, packet.get_length());
+    int8_t packetBuffer[packet.get_length()];
+    
+    packet.to_bytes(packetBuffer);
+    write_n_bytes(packetBuffer, packet.get_length());
   }
 }
 
@@ -181,12 +193,6 @@ void coordinate_handler(int interval) {
     lastX = lastX + x;
     lastY = lastY + y;
 
-    Serial.println("------"); 
-    Serial.println(String(distance));
-    Serial.println(String(angle));
-    Serial.println(String(lastX));
-    Serial.println(String(lastY));
-
     startTime = millis();
     startRightPosition = rightMotor.getPulsePos();
     startLeftPosition = leftMotor.getPulsePos();
@@ -196,24 +202,23 @@ void coordinate_handler(int interval) {
 
 
 void auto_mode() {
-  if (collision(10)) {
-    ((random(0, 2) == 0) ? &turn_left : &turn_right)(1000);
-    return;
-  }
 
   switch (lineFinder.readSensors()) {
     case S1_IN_S2_IN:
       if (current_acceleration > 0)
-        ((random(0, 2) == 0) ? &turn_left : &turn_right)(250);
+        ((random(0, 2) == 0) ? &turn_left : &turn_right)(1500);
       break;
     case S1_IN_S2_OUT:
-      ((current_acceleration < 0) ? &turn_left : &turn_right)(250);    
+      ((current_acceleration < 0) ? &turn_left : &turn_right)(500);    
       break;
     case S1_OUT_S2_IN:
-      ((current_acceleration < 0) ? &turn_right : &turn_left)(250);           
+      ((current_acceleration < 0) ? &turn_right : &turn_left)(500);           
       break;
     case S1_OUT_S2_OUT:
       break;
+  }
+  if (collision(10)) {
+    ((random(0, 2) == 0) ? &turn_left : &turn_right)(500);
   }
 }
 
@@ -234,7 +239,7 @@ void turn_left(int duration) {
 
 
 
-void read_n_bytes(int8_t* buffer, const int n) {
+void read_n_bytes(int8_t* packetBuffer, const int n) {
   unsigned long startTime = millis();
   while ((Serial.available() < n) && (millis() - startTime < 2000)){}
   
@@ -242,18 +247,18 @@ void read_n_bytes(int8_t* buffer, const int n) {
     int b = Serial.read();
     if (b < 0) break;   
 
-    *(buffer+i) = static_cast<int8_t>(b);
+    *(packetBuffer+i) = static_cast<int8_t>(b);
   }
 }
 
-void write_n_bytes(int8_t* buffer, const int n) {
+void write_n_bytes(int8_t* packetBuffer, const int n) {
   for (size_t i = 0; i < n; i++)
-    Serial.write(buffer[i]);
+    Serial.write(packetBuffer[i]);
 }
 
 
 void process_message_protocol() {
-  int8_t buffer[64];
+  int8_t packetBuffer[64];
 
   if (Serial.available() > 0) {
     RobotCommand command = static_cast<RobotCommand>(Serial.read());
@@ -268,18 +273,21 @@ void process_message_protocol() {
       on_disconnected();
       break;
     case ACCELERATION:
-      read_n_bytes(buffer, sizeof(int8_t));
-      on_acceleration_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
+      read_n_bytes(packetBuffer, sizeof(int8_t));
+      on_acceleration_changed(RobotPacket<int8_t>(command, packetBuffer).get_parameter());
       break;
     case STEERING:
-      read_n_bytes(buffer, sizeof(int8_t));
-      on_steering_changed(RobotPacket<int8_t>(command, buffer).get_parameter());
+      read_n_bytes(packetBuffer, sizeof(int8_t));
+      on_steering_changed(RobotPacket<int8_t>(command, packetBuffer).get_parameter());
+      break;
+    case MODE:
+      on_mode_changed();
       break;
     }
   }
 }
 
-/*
+
 void play_hanshake() 
 {
   int pitch = 2;
@@ -352,4 +360,4 @@ void play_hanshake()
   }
 
   buzzer.noTone();
-}*/
+} 
