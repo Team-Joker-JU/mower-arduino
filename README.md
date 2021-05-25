@@ -65,5 +65,9 @@ Can be downloaded from `http://learn.makeblock.com/en/Makeblock-library-for-Ardu
     <td>COLLISION</td>
     <td>5</td>
   </tr>
+  <tr>
+    <td>COLLISION</td>
+    <td>6</td>
+  </tr>
 </table>
 
