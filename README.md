@@ -12,10 +12,10 @@ Can be downloaded from `http://learn.makeblock.com/en/Makeblock-library-for-Ardu
 * Arduino Mega 2560
 
 ## Communication
-* Connect to `Raspberry pi` from an app via Bluetooth
-* `Raspberry pi` controls arduino through serial communication
-* `Raspberry pi` can send GET and POST requests to an `API` that is saved to a database
-* `mBot` is controlled by `Arduino Mega 2560`
+* Raspberry pi (RPI) is activated from a python script on the raspberry. Check repository `mower-rasperry-pi` for more details
+* The RPI talks with the arduino through a USB cable (Serial connection)
+* The RPI is connected with the app via bluetooth
+* The RPI can send REQUESTS to our backend API and send data, like coordinates
 
 ## Documentation
 
@@ -42,32 +42,28 @@ Can be downloaded from `http://learn.makeblock.com/en/Makeblock-library-for-Ardu
     <th>Code</th>
   </tr>
   <tr>
-    <td>HANDSHAKE</td>
+    <td>CONNECTED</td>
     <td>0</td>
   </tr>
   <tr>
-    <td>CONNECTED</td>
+    <td>DISCONNECTED</td>
     <td>1</td>
   </tr>
   <tr>
-    <td>RECEIVED</td>
+    <td>ACCELERATION</td>
     <td>2</td>
   </tr>
   <tr>
-    <td>ACCELERATION</td>
+    <td>STEERING</td>
     <td>3</td>
   </tr>
-  <tr>
-    <td>STEERING</td>
+    <tr>
+    <td>COLLISION</td>
     <td>4</td>
   </tr>
   <tr>
-    <td>COLLISION</td>
+    <td>MODE</td>
     <td>5</td>
-  </tr>
-  <tr>
-    <td>COLLISION</td>
-    <td>6</td>
   </tr>
 </table>
 
