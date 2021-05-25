@@ -1,12 +1,8 @@
 # mower-arduino
 
 ## Dependencies
-### python library
-`serial`
-```
-pip install serial
-```
-### Makeblock package
+
+* Makeblock package
 Can be downloaded from `http://learn.makeblock.com/en/Makeblock-library-for-Arduino/`
 
 ## Component description
