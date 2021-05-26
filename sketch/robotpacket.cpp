@@ -5,9 +5,14 @@ RobotPacket<T>::RobotPacket(RobotCommand command, T parameter)
   : command(command), parameter(parameter) {}
 
 template <typename T>
-RobotPacket<T>::RobotPacket(RobotCommand command, int8_t buffer[]) : command(command) 
+RobotPacket<T>::RobotPacket(RobotCommand command, T parameter, int32_t len) 
+  : command(command), parameter(parameter), len(len) {}
+  
+template <typename T>
+RobotPacket<T>::RobotPacket(RobotCommand command, int8_t* buffer, int32_t len) : command(command) 
 {
   this->parameter = this->from_bytes(buffer);
+  this->len = len;
 }
  
 template <typename T>   
@@ -17,7 +22,7 @@ template <typename T>
 T RobotPacket<T>::get_parameter() { return this->parameter; }
 
 template <typename T>
-int32_t RobotPacket<T>::get_length() { return sizeof(this->command) + sizeof(this->parameter); }
+int32_t RobotPacket<T>::get_length() { return sizeof(this->command) + this->len; }
 
 
 template<>
@@ -37,6 +42,11 @@ int32_t RobotPacket<int32_t>::from_bytes(int8_t *buffer) {
          (static_cast<int32_t>(*(buffer + 1)) << 8  & 0xff00)   | 
          (static_cast<int32_t>(*(buffer + 2)) << 16 & 0xff0000) | 
          (static_cast<int32_t>(*(buffer + 3)) << 24 & 0xff000000);
+}
+
+template<> 
+char* RobotPacket<char*>::from_bytes(int8_t *buffer) {
+  return (char*)buffer;
 }
 
 template<> 
@@ -61,6 +71,14 @@ void RobotPacket<int32_t>::to_bytes(int8_t *buffer) {
   buffer[4] = this->parameter >> 24;
 }
 
+template<> 
+void RobotPacket<char*>::to_bytes(int8_t *buffer) {
+  buffer[0] = this->command & 0xff;
+  for (int i = 0; i < this->len; i++)
+    buffer[i + 1] = this->parameter[i];
+}
+
 template class RobotPacket<int8_t>;
 template class RobotPacket<int16_t>;
 template class RobotPacket<int32_t>;
+template class RobotPacket<char*>;

@@ -67,8 +67,9 @@ void loop() {
 
   if (isAutomove && isConnected)
     auto_mode();
-    
-  delay(10);
+
+  collision_handler(500, 20);
+  coordinate_handler(2000);
 }
 
 void on_connected() {
@@ -151,14 +152,16 @@ void update_motion(int8_t acceleration, int8_t steering) {
 
 
 
-void collision_handler(int triggerDistance) {
-  int8_t distance = static_cast<int8_t>(ultraSensor.distanceCm());
-  if (distance < triggerDistance) {
-    RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance);
-    int8_t packetBuffer[packet.get_length()];
-    
+void collision_handler(int interval, int triggerDistance) {
+  static unsigned long startTime = millis();
+  int8_t distance = ultraSensor.distanceCm();
+  
+  if (millis() - startTime > interval && distance < triggerDistance && distance > 0) {
+    RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance, sizeof(int8_t));
+    int8_t packetBuffer[packet.get_length()];  
     packet.to_bytes(packetBuffer);
     write_n_bytes(packetBuffer, packet.get_length());
+    startTime = millis();
   }
 }
 
@@ -192,6 +195,15 @@ void coordinate_handler(int interval) {
 
     lastX = lastX + x;
     lastY = lastY + y;
+    
+    if (!isnan(lastX) && !isnan(lastY)) {
+      char buff[24] = {0};
+      sprintf(buff,"%.10s~%.10s", String(lastX).c_str(), String(lastY).c_str());
+      RobotPacket<char*> packet = RobotPacket<char*>(RobotCommand::POSITION, &buff[0], 24);
+      int8_t packetBuffer[packet.get_length()];
+      packet.to_bytes(packetBuffer);
+      write_n_bytes(packetBuffer, packet.get_length());
+    }
 
     startTime = millis();
     startRightPosition = rightMotor.getPulsePos();
@@ -274,11 +286,11 @@ void process_message_protocol() {
       break;
     case ACCELERATION:
       read_n_bytes(packetBuffer, sizeof(int8_t));
-      on_acceleration_changed(RobotPacket<int8_t>(command, packetBuffer).get_parameter());
+      on_acceleration_changed(RobotPacket<int8_t>(command, packetBuffer, sizeof(int8_t)).get_parameter());
       break;
     case STEERING:
       read_n_bytes(packetBuffer, sizeof(int8_t));
-      on_steering_changed(RobotPacket<int8_t>(command, packetBuffer).get_parameter());
+      on_steering_changed(RobotPacket<int8_t>(command, packetBuffer, sizeof(int8_t)).get_parameter());
       break;
     case MODE:
       on_mode_changed();
