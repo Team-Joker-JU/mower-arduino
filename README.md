@@ -1,4 +1,4 @@
-# mower-arduino
+# Mower-arduino
 
 ## Dependencies
 
