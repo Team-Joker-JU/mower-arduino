@@ -65,11 +65,13 @@ int counter = 0;
 void loop() {
   process_message_protocol();
 
+  if (isConnected) {
+    collision_handler(200, 30);
+    coordinate_handler(2000);
+  }
+
   if (isAutomove && isConnected)
     auto_mode();
-
-  collision_handler(500, 20);
-  coordinate_handler(2000);
 }
 
 void on_connected() {
@@ -94,28 +96,21 @@ void on_disconnected() {
 }
 
 void on_acceleration_changed(int8_t acceleration) {
-  // TODO: Assign value to robot
-  //Serial.println("on_acceleration_changed triggered"); 
-  //Serial.println(String(acceleration));
-  
   current_acceleration = acceleration;
   update_motion(current_acceleration, current_steering);
 }
 
 
 void on_steering_changed(int8_t steering) {
-  // TODO: Assign value to robot
-  //Serial.println("on_steering_changed triggered"); 
-  //Serial.println(String(steering));
-  
   current_steering = steering;
   update_motion(current_acceleration, current_steering);
 }
+
 void on_mode_changed(){
    isAutomove = !isAutomove;
 
    if (isAutomove)
-    on_acceleration_changed(60);
+    on_acceleration_changed(80);
    else
     on_acceleration_changed(0);
 }
@@ -128,7 +123,7 @@ bool collision(int distance)
 
 void update_motion(int8_t acceleration, int8_t steering) { 
   float normalized = 1.0f - ((float)abs(steering) / 100.0f);
-  int turnAcceleration = (normalized > 0.2f) ? (int)(acceleration * normalized) : acceleration * -1;
+  int turnAcceleration = (normalized > 0.6f) ? (int)(acceleration * normalized) : acceleration * -1;
   
   // Right turn
   if (steering > 0) {
@@ -151,18 +146,29 @@ void update_motion(int8_t acceleration, int8_t steering) {
 }
 
 
-
-void collision_handler(int interval, int triggerDistance) {
+/*
+ * 
+ */
+void collision_handler(int interval, int8_t triggerDistance) {
+  static int8_t lastDistance = 0;
   static unsigned long startTime = millis();
-  int8_t distance = ultraSensor.distanceCm();
   
-  if (millis() - startTime > interval && distance < triggerDistance && distance > 0) {
-    RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance, sizeof(int8_t));
-    int8_t packetBuffer[packet.get_length()];  
-    packet.to_bytes(packetBuffer);
-    write_n_bytes(packetBuffer, packet.get_length());
-    startTime = millis();
+  int8_t distance = ultraSensor.distanceCm();
+
+  if (millis() - startTime < interval || 
+      distance > triggerDistance && 
+      lastDistance == triggerDistance)
+    return;
+
+  if (distance < triggerDistance && distance > 0) {
+    send_collision_avoidance(distance);
+    lastDistance = distance;
+  } else {
+    send_collision_avoidance(triggerDistance);
+    lastDistance = triggerDistance;
   }
+  
+  startTime = millis();
 }
 
 void coordinate_handler(int interval) {
@@ -221,16 +227,16 @@ void auto_mode() {
         ((random(0, 2) == 0) ? &turn_left : &turn_right)(1500);
       break;
     case S1_IN_S2_OUT:
-      ((current_acceleration < 0) ? &turn_left : &turn_right)(500);    
+      ((current_acceleration < 0) ? &turn_left : &turn_right)(1000);    
       break;
     case S1_OUT_S2_IN:
-      ((current_acceleration < 0) ? &turn_right : &turn_left)(500);           
+      ((current_acceleration < 0) ? &turn_right : &turn_left)(1000);           
       break;
     case S1_OUT_S2_OUT:
       break;
   }
-  if (collision(10)) {
-    ((random(0, 2) == 0) ? &turn_left : &turn_right)(500);
+  if (collision(20)) {
+    ((random(0, 2) == 0) ? &turn_left : &turn_right)(1000);
   }
 }
 
@@ -285,10 +291,16 @@ void process_message_protocol() {
       on_disconnected();
       break;
     case ACCELERATION:
+      if (isAutomove)
+        return;
+    
       read_n_bytes(packetBuffer, sizeof(int8_t));
       on_acceleration_changed(RobotPacket<int8_t>(command, packetBuffer, sizeof(int8_t)).get_parameter());
       break;
     case STEERING:
+      if (isAutomove)
+        return;
+        
       read_n_bytes(packetBuffer, sizeof(int8_t));
       on_steering_changed(RobotPacket<int8_t>(command, packetBuffer, sizeof(int8_t)).get_parameter());
       break;
@@ -298,6 +310,27 @@ void process_message_protocol() {
     }
   }
 }
+
+
+
+
+/* - - - - - - - - - - - - - - - - - -
+ *  Helper functions for sending data |                             
+ * - - - - - - - - - - - - - - - - - -
+*/
+ 
+void send_collision_avoidance(int8_t distance) {
+  RobotPacket<int8_t> packet = RobotPacket<int8_t>(RobotCommand::COLLISION, distance, sizeof(int8_t));
+  int8_t packetBuffer[packet.get_length()];  
+  packet.to_bytes(packetBuffer);
+  write_n_bytes(packetBuffer, packet.get_length());
+}
+
+
+
+
+
+
 
 
 void play_hanshake() 

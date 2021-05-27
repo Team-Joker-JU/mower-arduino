@@ -8,7 +8,6 @@
 template <typename T>
 class RobotPacket {
   private:
-    const int32_t MAX_BUFFER = 64;
     int32_t len;
     RobotCommand command;
     T parameter;
